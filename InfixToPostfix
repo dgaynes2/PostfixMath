@@ -1,6 +1,21 @@
-class Postfix:
+class TooManyItems(Exception):
+    pass
+
+
+class BigNumPostfix:
     def __init__(self,equation: str):
-        self.equation = equation
+        self.eq = equation.split(' ')
+
+        self.index = -1
+        self.curr_char = None
+        self.next()
+
+    def next(self) -> None:
+        self.index += 1
+        self.curr_char = self.eq[self.index] if self.index < len(self.eq) else None
+
+    def peek(self) -> str:
+        return self.eq[self.index + 1]
 
     def get_prec(self, op: str) -> int:
         match op:
@@ -15,33 +30,49 @@ class Postfix:
         return 'R' if op == '^' else 'L'
 
     @property
-    def postfix(self):
+    def postfix(self) -> list:
         result = []
         stack = []
 
-        for i in range(len(self.equation)):
-            n = self.equation[i]
+        while self.index < len(self.eq):
+            n = self.eq[self.index]
 
             if n.isdigit():
-                result.append(n)
+                result.append(self.make_number(n))
             elif n == '(':
                 stack.append(n)
             elif n == ')':
                 while stack[-1] != '(':
                     result.append(stack.pop())
-                stack.pop() # no parentheses can be in result
+                stack.pop()
             else:
-                while stack and (self.get_prec(self.equation[i]) < self.get_prec(stack[-1]) or
-                                 (self.get_prec(self.equation[i]) == self.get_prec(stack[-1]) and self.associativity(n) == 'L')):
+                while stack and (
+                    self.get_prec(self.curr_char) < self.get_prec(stack[-1]) or (
+                    self.get_prec(self.curr_char) == self.get_prec(stack[-1]) and self.associativity(n) == 'L')
+                ):
                     result.append(stack.pop())
-                stack.append(n)
+                stack.append(self.curr_char)
+            self.next()
 
         while stack:
             result.append(stack.pop())
 
-        return ''.join(result)
+        return result
 
-    def solve_postfix(self):
+    def make_number(self,n: str) -> str:
+        # ensures return '10' not '1','0'
+        num_str = str(n)
+
+        n_is_num = True
+        while n_is_num:
+            if self.index + 1 < len(self.eq):
+                if self.peek().isdigit():
+                    self.next()
+                    num_str += self.curr_char
+            n_is_num = False
+        return num_str
+
+    def solve_postfix(self) -> int | float | Exception:
         stack = []
 
         for i in self.postfix:
@@ -50,10 +81,18 @@ class Postfix:
             else:
                 val1 = stack.pop()
                 val2 = stack.pop()
-                result = str(eval(val2 + i + val1))
+                # handle ^ explicitly because python uses **
+                result = str(eval(val2 + i + val1)) if i != '^' else str(int(val1) ** int(val2))
                 stack.append(result)
 
-        return stack[0]
+        if len(stack) == 1:
+            if float(stack[0]).is_integer():
+                return int(float(stack[0]))
+            return stack[0]
+        else:
+            raise TooManyItems(f'Result should only have 1 item, not {len(stack)}')
 
-s = Postfix("2+(3*1)-9") # -4
-print(s.solve_postfix())
+a = BigNumPostfix("2 + ( 3 * 1 ) - 10")
+b = BigNumPostfix("( 100 + 200 ) / 2 * 5 + 7")
+print(a.solve_postfix()) # -5
+print(b.solve_postfix()) # 757.0
