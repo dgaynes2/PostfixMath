@@ -1,0 +1,59 @@
+class Postfix:
+    def __init__(self,equation: str):
+        self.equation = equation
+
+    def get_prec(self, op: str) -> int:
+        match op:
+            case '^': return 3
+            case '*': return 2
+            case '/': return 2
+            case '+': return 1
+            case '-': return 1
+            case   _: return -1 # all else
+
+    def associativity(self, op: str) -> str:
+        return 'R' if op == '^' else 'L'
+
+    @property
+    def postfix(self):
+        result = []
+        stack = []
+
+        for i in range(len(self.equation)):
+            n = self.equation[i]
+
+            if n.isdigit():
+                result.append(n)
+            elif n == '(':
+                stack.append(n)
+            elif n == ')':
+                while stack[-1] != '(':
+                    result.append(stack.pop())
+                stack.pop() # no parentheses can be in result
+            else:
+                while stack and (self.get_prec(self.equation[i]) < self.get_prec(stack[-1]) or
+                                 (self.get_prec(self.equation[i]) == self.get_prec(stack[-1]) and self.associativity(n) == 'L')):
+                    result.append(stack.pop())
+                stack.append(n)
+
+        while stack:
+            result.append(stack.pop())
+
+        return ''.join(result)
+
+    def solve_postfix(self):
+        stack = []
+
+        for i in self.postfix:
+            if i.isdigit():
+                stack.append(i)
+            else:
+                val1 = stack.pop()
+                val2 = stack.pop()
+                result = str(eval(val2 + i + val1))
+                stack.append(result)
+
+        return stack[0]
+
+s = Postfix("2+(3*1)-9") # -4
+print(s.solve_postfix())
